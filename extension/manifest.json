@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "存知识库",
+  "version": "0.1.0",
+  "description": "把 B站/YouTube 视频链接交给本地助手，自动抓取、转写、AI 摘要，存为 Markdown 笔记",
+  "permissions": [
+    "nativeMessaging",
+    "contextMenus",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.bilibili.com/*",
+    "*://*.youtube.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icon-obsidian.png",
+        "icon-bright.png",
+        "icon-gray.png"
+      ],
+      "matches": [
+        "https://www.bilibili.com/*",
+        "https://bilibili.com/*",
+        "https://www.youtube.com/*"
+      ]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.bilibili.com/*",
+        "https://bilibili.com/*",
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "floating-button.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "存知识库"
+  }
+}

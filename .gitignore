@@ -1,0 +1,16 @@
+# 私密配置（含 API Key），绝不入库
+.env
+
+# 本机生成的宿主清单（由 安装本地助手.bat 从 template 生成）
+com.localbot.ingest.json
+
+# 运行时产物
+work/
+worker.log
+_state/
+__pycache__/
+*.pyc
+.venv/
+
+# 私有适配层（作者自用平台代码，不公开）
+private/

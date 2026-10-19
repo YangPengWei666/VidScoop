@@ -1,0 +1,2 @@
+# VidScoop Python 依赖（yt-dlp / ffmpeg 为外部命令行工具，见 README 前置依赖）
+requests>=2.31
