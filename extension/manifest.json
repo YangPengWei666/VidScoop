@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "存知识库",
+  "name": "音频转文字",
   "version": "0.1.0",
-  "description": "把 B站/YouTube 视频链接交给本地助手，自动抓取、转写、AI 摘要，存为 Markdown 笔记",
+  "description": "把视频里的声音转成文字，自动整理摘要，存成 Markdown 笔记",
   "permissions": [
     "nativeMessaging",
     "contextMenus",
     "activeTab",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
     "*://*.bilibili.com/*",
@@ -45,6 +46,18 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "存知识库"
+    "default_title": "音频转文字",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
   }
 }

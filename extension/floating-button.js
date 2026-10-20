@@ -1,5 +1,5 @@
 /**
- * floating-button.js —— 悬浮「入库」按钮（B站/YouTube 页面自动出现）
+ * floating-button.js —— 悬浮按钮（B站/YouTube 视频页自动出现）
  * 真·Obsidian 图标（exe 里抠出来的 3D 宝石），无底、可拖动、位置记忆。
  * 状态机（全部带过渡动画）：
  *   idle 待机（安静） → charging 充能（宝石变暗，单色紫水位 0→100% 自下而上，
@@ -10,13 +10,31 @@
   if (window.__localbotFloatBtn) return;
   window.__localbotFloatBtn = true;
 
-  const SIZE = 44;
+  const W = 80;                    // 横版宽（图形 2.65:1）
+  const H = 30;                    // 横版高
   const KEY = "localbot_btn_pos";
   const IMG = {
     idle: chrome.runtime.getURL("icon-obsidian.png"),
-    bright: chrome.runtime.getURL("icon-bright.png"),
-    gray: chrome.runtime.getURL("icon-gray.png"),
   };
+
+  // ---- 显示开关：与弹窗共用 chrome.storage.local.floatVisible ----
+  let floatVisible = true;
+  try {
+    chrome.storage.local.get({ floatVisible: true }, function (r) {
+      floatVisible = r.floatVisible !== false;
+      applyVisible();
+    });
+  } catch (e) {}
+  chrome.runtime.onMessage.addListener(function (m) {
+    if (m && m.type === "localbot-float-visible") {
+      floatVisible = m.visible !== false;
+      applyVisible();
+    }
+  });
+  function applyVisible() {
+    const el = document.getElementById("localbot-float-btn");
+    if (el) el.style.display = floatVisible ? "" : "none";
+  }
 
   /*__P5_PURE__ 纯函数区：自检脚本 vm 提取，勿依赖 DOM/chrome */
   /* 总进度预算 0–100：页面真实下载百分比占 0–55，之后按 worker 阶段目标位缓涨 */
@@ -39,55 +57,51 @@
   const style = document.createElement("style");
   style.textContent = `
     #localbot-float-btn{position:fixed;top:30%;right:16px;z-index:2147483647;
-      width:${SIZE}px;height:${SIZE}px;cursor:grab;
+      width:${W}px;height:${H}px;cursor:grab;
       user-select:none;-webkit-user-select:none;touch-action:none;}
+    /* 整张长条图（波形 + 三条横杠） */
     #localbot-float-btn img{position:absolute;inset:0;width:100%;height:100%;
       pointer-events:none;display:block;
       filter:drop-shadow(0 1px 5px rgba(0,0,0,.35));
-      transition:opacity .7s ease, transform .25s ease;}
-    /* 点击后宝石变暗（淡）；成功时暗底重新提亮，整颗在满水位上亮回来 */
-    #localbot-float-btn img.base{transition:opacity .7s ease,transform .25s ease,filter .35s ease;}
-    #localbot-float-btn.charging img.base{
-      filter:brightness(.42) saturate(.75) drop-shadow(0 1px 5px rgba(0,0,0,.35));}
-    #localbot-float-btn.success img.base{
-      filter:brightness(1) saturate(1) drop-shadow(0 1px 5px rgba(0,0,0,.35));}
-    /* 充能水位：clip-path 从下往上揭，fill 用宝石 mask 贴形，单色紫白渐变 */
+      transition:opacity .7s ease,transform .25s ease;}
+    #localbot-float-btn.charging img{filter:brightness(.42) saturate(.75);}
+    #localbot-float-btn.failed img{filter:grayscale(1) brightness(.6);}
+    #localbot-float-btn.success img{filter:brightness(1.15);}
+    /* 充能水位：自下而上 */
     #localbot-float-btn .fill-clip{position:absolute;inset:0;pointer-events:none;
       opacity:0;clip-path:inset(100% 0 0 0);
       transition:clip-path .3s linear,opacity .25s ease;}
     #localbot-float-btn.charging .fill-clip,
     #localbot-float-btn.success .fill-clip{opacity:1;}
     #localbot-float-btn .fill{position:absolute;inset:0;
-      -webkit-mask-image:url(${IMG.idle});mask-image:url(${IMG.idle});
+      -webkit-mask-image:var(--waveMask);mask-image:var(--waveMask);
       -webkit-mask-size:contain;mask-size:contain;
       -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
       -webkit-mask-position:center;mask-position:center;
       background:linear-gradient(155deg,#fff 0%,#d9c2ff 34%,#9b6dff 68%,#6a3ee0 100%);}
-    /* 中心百分比：白字黑描边，水位线穿字也可读；全程跟随到 100% */
+    /* 百分比 */
     #localbot-float-btn .pct{position:absolute;inset:0;display:flex;
       align-items:center;justify-content:center;pointer-events:none;
       font:700 11px/1 system-ui,-apple-system,sans-serif;color:#fff;
       -webkit-text-stroke:.5px rgba(0,0,0,.72);paint-order:stroke fill;
       text-shadow:0 1px 2px rgba(0,0,0,.55);
       opacity:0;transition:opacity .2s ease;}
-    #localbot-float-btn.charging .pct{opacity:1;}
+    #localbot-float-btn.charging .pct,
     #localbot-float-btn.success .pct{opacity:1;}
-    /* 辉光透明度由 --lb-glow 逐帧驱动：越充越亮（不做呼吸/变色） */
-    #localbot-float-btn .glow{position:absolute;inset:0;width:100%;height:100%;
+    /* 辉光 */
+    #localbot-float-btn .glow{position:absolute;inset:0;
       pointer-events:none;opacity:0;mix-blend-mode:screen;
       background:radial-gradient(circle at 42% 38%,
         rgba(255,255,255,.95) 0%, rgba(196,140,255,.85) 34%,
         rgba(150,70,255,.5) 62%, rgba(120,50,240,0) 100%);
-      -webkit-mask-image:url(${IMG.idle});mask-image:url(${IMG.idle});
+      -webkit-mask-image:var(--waveMask);mask-image:var(--waveMask);
       -webkit-mask-size:contain;mask-size:contain;
       -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
       -webkit-mask-position:center;mask-position:center;
       transition:opacity .3s ease;}
     #localbot-float-btn.charging .glow{opacity:var(--lb-glow,.12);}
     #localbot-float-btn.success .glow{opacity:.82;}
-    #localbot-float-btn:hover{transform:scale(1.1);}
-    #localbot-float-btn.dragging{cursor:grabbing;}
-    #localbot-float-btn.failed .over{opacity:1;transition:opacity .7s ease;}
+
     /* 结果气泡（独立容器，setState 重绘碰不到） */
     #localbot-toast{position:fixed;z-index:2147483647;max-width:min(280px,72vw);
       pointer-events:none;padding:9px 12px;border-radius:12px;
@@ -114,11 +128,12 @@
     `<img class="base" src="${IMG.idle}" alt="">` +
     `<div class="fill-clip"><div class="fill"></div></div>` +
     `<div class="glow"></div>` +
-    `<span class="pct"></span>` +
-    `<img class="over" src="${IMG.idle}" alt="" style="opacity:0;">`;
+    `<span class="pct"></span>`;
   document.documentElement.appendChild(btn);
+  applyVisible();
   const baseImg = btn.querySelector(".base");
-  const overImg = btn.querySelector(".over");
+  if (baseImg) btn.style.setProperty("--waveMask",
+    "url(\"" + chrome.runtime.getURL("icon-obsidian.png") + "\")");
   const fillClip = btn.querySelector(".fill-clip");
   const pctEl = btn.querySelector(".pct");
 
@@ -144,7 +159,6 @@
       setTimeout(() => { if (state === "success") setState("idle"); }, 1900);
     } else if (next === "failed") {
       stopDrift();
-      overImg.src = IMG.gray;
       btn.classList.add("failed");
     }
   }
@@ -237,12 +251,12 @@
     const r = btn.getBoundingClientRect();
     const w = el.offsetWidth, h = el.offsetHeight;
     let left;
-    if (r.left + SIZE / 2 > window.innerWidth / 2) {
+    if (r.left + r.width / 2 > window.innerWidth / 2) {
       left = Math.max(8, r.left - w - 8);           // 按钮在右半屏：气泡出左侧
     } else {
       left = Math.min(r.right + 8, window.innerWidth - w - 8);
     }
-    const top = Math.max(8, Math.min(r.top + (SIZE - h) / 2, window.innerHeight - h - 8));
+    const top = Math.max(8, Math.min(r.top + (r.height - h) / 2, window.innerHeight - h - 8));
     el.style.left = left + "px";
     el.style.top = top + "px";
     requestAnimationFrame(() => el.classList.add("show"));
@@ -319,8 +333,9 @@
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
       if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
       if (!moved) return;
-      const L = Math.min(Math.max(0, ox + dx), window.innerWidth - SIZE);
-      const T = Math.min(Math.max(0, oy + dy), window.innerHeight - SIZE);
+      const cur = btn.getBoundingClientRect();
+      const L = Math.min(Math.max(0, ox + dx), window.innerWidth - cur.width);
+      const T = Math.min(Math.max(0, oy + dy), window.innerHeight - cur.height);
       btn.style.left = L + "px";
       btn.style.top = T + "px";
       btn.style.right = "auto";
